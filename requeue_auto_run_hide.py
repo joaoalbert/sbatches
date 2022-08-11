@@ -6,10 +6,10 @@ rhPath = "/scratch/bingo/joao.barretos/hide_and_seek/hide-beam/run_hide.py" # ru
 arhPath = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/auto_run_hide.py" # auto_run_hide -> days
 #outPath = ""
 batchPath = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/sbatch_hide_zernike.srm"
-squeue = "squeue -u joao.barretos | grep hide"
+squeue = "squeue -u joao.barretos | grep auto"
 
 
-horns_i, horns_f = 4, 27 #0-27
+horns_i, horns_f = 5, 10 #0-27
 days_i, days_f = 1, 5 #1-30
 
 # this must match what bingo.py says
@@ -27,7 +27,7 @@ ARH_LINE = "	initial_day, final_day"
 run = 1
 N = (horns_f-horns_i)*(days_f-days_i)
 
-sbatch = "echo vale"#"sbatch {}".format(batchPath)
+sbatch = "sbatch {}".format(batchPath)
 
 
 ############################################################
