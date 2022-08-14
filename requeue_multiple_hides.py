@@ -40,7 +40,7 @@ for day in range(day_i, day_f+1):
 	
 	# rodar o autorunhide 5 vezes pra gerar 5 bingos base com 5 dias diferentes
 	print("\n\nAlterando data para dia {}...".format(day))
-	os.system("python3 {} {} {}".format(ARH_FILE, day, bingo_day))
+	os.system("python3 {script} {day} {config_file} {hide_path}".format(script=ARH_FILE, day=day, config_file=bingo_day, hide_path=local_hide))
 	
 	# rodar o runhide pra gerar 28 bingos pra cada dia
 	print("\n\nCriando para as cornetas {}-{}...".format(horn_i, horn_f))
