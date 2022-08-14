@@ -4,18 +4,22 @@ horn_i, horn_f = 0, 28 # 0-28 ultimo nao incluso
 day_i, day_f = 1, 5 # 1-5 ultimo incluso
 
 # where local hide is:
-local_hide = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/hide/"
+local_hide = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/hide-beam/"
 # where auto_run_hide.py is
-ARH_FILE = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/HS_scripts/auto_run_hide.py"
+ARH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/auto_run_hide.py"
 # where sbatch is
-SBATCH_FILE = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/sbatch_auto_jobs.srm"
-new_sbatches = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/sbatch_auto_jobs_{}.srm"
+SBATCH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sbatch_auto_jobs.srm"
+new_sbatches = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sbatch_auto_jobs_{}.srm"
+
 
 sbatch_cmd = "sbatch {}"
 # command line to run hide
 srun_cmd = "srun hide hide.config.{bingo} &\n"
 cmd_landmark = "# Jobs go below\n"
 n_perbatch = 10
+
+sbatch_o_landmark = "#SBATCH -o "
+sbatch_e_landmark = "#SBATCH -e "
 
 
 source = os.path.join(local_hide, "hide", "config")
@@ -58,7 +62,11 @@ print("Criando {} sbatches com {} jobs cada...".format(n_sbatches, n_perbatch))
 with open(SBATCH_FILE, "r") as sbatch_open:
 	sbatch_lines = sbatch_open.readlines()
 	for i, sbatch_line in enumerate(sbatch_lines):
-		if sbatch_line.startswith(cmd_landmark):
+		if sbatch_line.startswith(sbatch_o_landmark):
+			sbatch_o_line = i
+		elif sbatch_line.startswith(sbatch_e_landmark):
+			sbatch_e_line = i
+		elif sbatch_line.startswith(cmd_landmark):
 			start_from = i
 			break
 			
@@ -74,6 +82,10 @@ for n_sbatch in range(n_sbatches):
 	with open(new_sbatch,"w") as new_sbatchf:
 		for n_srun in range(n_perbatch):
 		
+			err_out_file = new_sbatch.split(".")[0]
+			new_sbatch_lines[sbatch_o_line] = sbatch_o_landmark + err_out_file + ".out\n"
+			new_sbatch_lines[sbatch_e_line] = sbatch_e_landmark + err_out_file + ".err\n"
+			
 			bingo_i = n_sbatch*n_perbatch+n_srun
 			bingof = bingo_files[bingo_i]
 			n_srun_cmd = srun_cmd.format(bingo=bingof)		
