@@ -1,8 +1,9 @@
 #!/bin/bash -f
 
 #SBATCH --job-name=auto_hide
-#SBATCH -p sequana_cpu_dev
-#SBATCH -N1 -n1
+#SBATCH -p cpu_shared
+#SBATCH -N1
+#SBATCH -n1
 #SBATCH --mem-per-cpu=7G
 #SBATCH --time=00:20:00
 #SBATCH -o /scratch/bingo/joao.barretos/hide_and_seek/resultados/TOD/zernike_150_MINUS110_nearest/hide_zernike_110_nearest.out
