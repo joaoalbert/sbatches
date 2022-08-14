@@ -5,11 +5,11 @@ import time
 rhPath = "/scratch/bingo/joao.barretos/hide_and_seek/hide-beam/run_hide.py" # run_hide -> horns
 arhPath = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/auto_run_hide.py" # auto_run_hide -> days
 #outPath = ""
-batchPath = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/sbatch_hide_zernike.srm"
+batchPath = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/sbatch_auto_hide.srm"
 squeue = "squeue -u joao.barretos | grep auto"
 
 
-horns_i, horns_f = 5, 10 #0-27
+horns_i, horns_f = 9, 15 #0-27
 days_i, days_f = 1, 5 #1-30
 
 # this must match what bingo.py says
@@ -61,7 +61,7 @@ for horn in range(horns_i, horns_f+1):
         print("Run time: {}".format(time.ctime()))
         
         # Change auto_run_hide file
-        arh_newline = ARH_LINE + " = {}, {}\n".format(day, day+1)
+        arh_newline = ARH_LINE + " = {}, {}\n".format(day, day)
         change_one_line(arhPath, ARH_LINE, arh_newline)
         
         # Run sbatch

@@ -20,6 +20,7 @@ echo This jobs runs on the following processors:
 echo $SLURM_JOB_NODELIST
 
 srun python3 auto_run_hide.py
+#srun python3 auto_run_hide2.py &
 
 echo Time is `date`
 
