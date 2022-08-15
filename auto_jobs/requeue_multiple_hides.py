@@ -4,21 +4,34 @@ horn_i, horn_f = 0, 28 # 0-28 ultimo nao incluso
 day_i, day_f = 1, 5 # 1-5 ultimo incluso
 
 # where local hide is:
-local_hide = "/scratch/bingo/joao.barretos/hide_and_seek/hide-beam/"
+local_hide = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/hide/"
 # where auto_run_hide.py is
-ARH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/auto_run_hide.py"
+ARH_FILE = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/HS_scripts/auto_run_hide.py"
 # where sbatch is
-SBATCH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sbatch_auto_jobs.srm"
-new_sbatches = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sbatch_auto_jobs_{}.srm"
+SBATCH_FILE = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/sbatch_auto_jobs.srm"
 
+new_sbatches = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/sbatch_auto_jobs_{}.srm"
 
-partition, memlim = "sequana_cpu_shared", 64 # memory limit
+partition = "sequana_cpu_shared"
 n_perbatch = 10 # tasks
 N_perbatch = 1 # nodes
-m_pertask = 4#64*N_perbatch/n_perbatch # memory in GB
+m_pertask = 4 #64*N_perbatch/n_perbatch # memory in GB
+sd_user = "joao.barretos"
+
+run_sbatches = False
+sleep_time = 30 # time (s) to wait and re-check if there is space in queue
+
+srun_cmd = "srun hide hide.config.{bingo} &\n" # command line to run hide
 sbatch_cmd = "sbatch {}"
-# command line to run hide
-srun_cmd = "srun hide hide.config.{bingo} &\n"
+squeue_wait = "squeue -u {} -p {} -t PD".format(sd_user, partition)
+
+# [limite memoria RAM, limite jobs em espera]
+partitions = {"sequana_cpu_shared": [64, 24],
+			  "cpu_shared": [64, 96],
+			  "cpu_dev": [64, 1],
+			  }
+			  
+memlim, jobslim = partitions[partition][0], partitions[partition][1]
 
 sbatch_landmarks = {"p": "#SBATCH -p ",
 					"N": "#SBATCH -N",
@@ -28,7 +41,6 @@ sbatch_landmarks = {"p": "#SBATCH -p ",
 					"e": "#SBATCH -e",
 					"cmd": "# Jobs go below\n",
 					}
-
 
 source = os.path.join(local_hide, "hide", "config")
 RH_FILE = os.path.join(local_hide, "run_hide.py")
@@ -67,16 +79,18 @@ print("\n\nTotal de arquivos criados: {}".format(len(bingo_files)))
 n_sbatches = len(bingo_files)//n_perbatch+1
 print("Criando {} sbatches com {} jobs cada...".format(n_sbatches, n_perbatch))
 
-landmarks_lines = {}
+landmark_lines = {}
 with open(SBATCH_FILE, "r") as sbatch_open:
 	sbatch_lines = sbatch_open.readlines()
 	for i, sbatch_line in enumerate(sbatch_lines):
 		for landmark in sbatch_landmarks:
-			if sbatch_line.startswith(sbatch_landmark[landmark]):
+			if sbatch_line.startswith(sbatch_landmarks[landmark]):
 				landmark_lines[landmark] = i
 			if landmark=="cmd":
 				break
 				
+			
+sbatch_files = []
 			
 # Criar novos sbatches
 for n_sbatch in range(n_sbatches):
@@ -91,9 +105,9 @@ for n_sbatch in range(n_sbatches):
 		
 			err_out_file = os.path.splitext(new_sbatch)[0]
 			new_sbatch_lines[landmark_lines["p"]] = sbatch_landmarks["p"] + partition + "\n"
-			new_sbatch_lines[landmark_lines["N"]] = sbatch_landmarks["N"] + N_perbatch + "\n"
-			new_sbatch_lines[landmark_lines["n"]] = sbatch_landmarks["n"] + n_perbatch + "\n"
-			new_sbatch_lines[landmark_lines["m"]] = sbatch_landmarks["m"] + m_pertask + "G\n"
+			new_sbatch_lines[landmark_lines["N"]] = sbatch_landmarks["N"] + str(N_perbatch) + "\n"
+			new_sbatch_lines[landmark_lines["n"]] = sbatch_landmarks["n"] + str(n_perbatch) + "\n"
+			new_sbatch_lines[landmark_lines["m"]] = sbatch_landmarks["m"] + str(m_pertask) + "G\n"
 			new_sbatch_lines[landmark_lines["o"]] = sbatch_landmarks["o"] + err_out_file + ".out\n"
 			new_sbatch_lines[landmark_lines["e"]] = sbatch_landmarks["e"] + err_out_file + ".err\n"
 			
@@ -104,10 +118,25 @@ for n_sbatch in range(n_sbatches):
 				new_sbatch_lines.insert(landmark_lines["cmd"]+n_srun+1, n_srun_cmd)
 			#else: # last line doesnt have & at the end
 			#	new_sbatch_lines.insert(landmark_lines["cmd"]+n_srun+1, n_srun_cmd[:-2]+"\n")
-	
-		new_sbatchf.writelines(new_sbatch_lines)
 			
-	# enviar diversos sbatches de uma vez para fila cpu_shared
-	#os.system(sbatch_cmd.format(new_sbatch))#; break #fazendo loop unico para testar
+		new_sbatchf.writelines(new_sbatch_lines)
+	sbatch_files.append(new_sbatch)
+
+
+def sleep_while_full(squeue_wait, jobslim, sleep_time=30):
+	waiting_jobs = os.popen(squeue_wait).read()
+	num_waiting_jobs = len(waiting_jobs.split("\n"))-2
+	while num_waiting_jobs>jobslim:
+		os.sleep(sleep_time)
+		waiting_jobs = os.popen(squeue_wait).read()
+		num_waiting_jobs = len(waiting_jobs.split("\n"))-2
+
+
+# enviar diversos sbatches de uma vez para fila cpu_shared
+if run_sbatches:
+	for new_sbatch in sbatch_files:
+		sleep_while_full(squeue_wait, jobslim, sleep_time)
+		os.system(sbatch_cmd.format(new_sbatch))#; break #fazendo loop unico para testar
+
 
 
