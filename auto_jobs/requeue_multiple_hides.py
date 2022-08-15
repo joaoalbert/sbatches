@@ -12,14 +12,22 @@ SBATCH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sba
 new_sbatches = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sbatch_auto_jobs_{}.srm"
 
 
+partition, memlim = "sequana_cpu_shared", 64 # memory limit
+n_perbatch = 10 # tasks
+N_perbatch = 1 # nodes
+m_pertask = 4#64*N_perbatch/n_perbatch # memory in GB
 sbatch_cmd = "sbatch {}"
 # command line to run hide
 srun_cmd = "srun hide hide.config.{bingo} &\n"
-cmd_landmark = "# Jobs go below\n"
-n_perbatch = 10
 
-sbatch_o_landmark = "#SBATCH -o "
-sbatch_e_landmark = "#SBATCH -e "
+sbatch_landmarks = {"p": "#SBATCH -p ",
+					"N": "#SBATCH -N",
+					"n": "#SBATCH -n",
+					"m": "#SBATCH --mem-per-cpu=",
+					"o": "#SBATCH -o ",
+					"e": "#SBATCH -e",
+					"cmd": "# Jobs go below\n",
+					}
 
 
 source = os.path.join(local_hide, "hide", "config")
@@ -59,17 +67,16 @@ print("\n\nTotal de arquivos criados: {}".format(len(bingo_files)))
 n_sbatches = len(bingo_files)//n_perbatch+1
 print("Criando {} sbatches com {} jobs cada...".format(n_sbatches, n_perbatch))
 
+landmarks_lines = {}
 with open(SBATCH_FILE, "r") as sbatch_open:
 	sbatch_lines = sbatch_open.readlines()
 	for i, sbatch_line in enumerate(sbatch_lines):
-		if sbatch_line.startswith(sbatch_o_landmark):
-			sbatch_o_line = i
-		elif sbatch_line.startswith(sbatch_e_landmark):
-			sbatch_e_line = i
-		elif sbatch_line.startswith(cmd_landmark):
-			start_from = i
-			break
-			
+		for landmark in sbatch_landmarks:
+			if sbatch_line.startswith(sbatch_landmark[landmark]):
+				landmark_lines[landmark] = i
+			if landmark=="cmd":
+				break
+				
 			
 # Criar novos sbatches
 for n_sbatch in range(n_sbatches):
@@ -78,22 +85,25 @@ for n_sbatch in range(n_sbatches):
 	new_sbatch_lines = sbatch_lines.copy()
 	if n_sbatch==n_sbatches-1:
 		n_perbatch = len(bingo_files)%n_perbatch
-		
 	
 	with open(new_sbatch,"w") as new_sbatchf:
 		for n_srun in range(n_perbatch):
 		
 			err_out_file = os.path.splitext(new_sbatch)[0]
-			new_sbatch_lines[sbatch_o_line] = sbatch_o_landmark + err_out_file + ".out\n"
-			new_sbatch_lines[sbatch_e_line] = sbatch_e_landmark + err_out_file + ".err\n"
+			new_sbatch_lines[landmark_lines["p"]] = sbatch_landmarks["p"] + partition + "\n"
+			new_sbatch_lines[landmark_lines["N"]] = sbatch_landmarks["N"] + N_perbatch + "\n"
+			new_sbatch_lines[landmark_lines["n"]] = sbatch_landmarks["n"] + n_perbatch + "\n"
+			new_sbatch_lines[landmark_lines["m"]] = sbatch_landmarks["m"] + m_pertask + "G\n"
+			new_sbatch_lines[landmark_lines["o"]] = sbatch_landmarks["o"] + err_out_file + ".out\n"
+			new_sbatch_lines[landmark_lines["e"]] = sbatch_landmarks["e"] + err_out_file + ".err\n"
 			
 			bingo_i = n_sbatch*n_perbatch+n_srun
 			bingof = bingo_files[bingo_i]
 			n_srun_cmd = srun_cmd.format(bingo=bingof)		
-			if n_srun<(n_perbatch-1):
-				new_sbatch_lines.insert(start_from+n_srun+1, n_srun_cmd)
-			else: # last line doesnt have & at the end
-				new_sbatch_lines.insert(start_from+n_srun+1, n_srun_cmd[:-2]+"\n")
+			if n_srun<(n_perbatch):#-1):
+				new_sbatch_lines.insert(landmark_lines["cmd"]+n_srun+1, n_srun_cmd)
+			#else: # last line doesnt have & at the end
+			#	new_sbatch_lines.insert(landmark_lines["cmd"]+n_srun+1, n_srun_cmd[:-2]+"\n")
 	
 		new_sbatchf.writelines(new_sbatch_lines)
 			
