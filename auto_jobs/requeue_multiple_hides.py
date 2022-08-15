@@ -4,7 +4,7 @@ horn_i, horn_f = 0, 28 # 0-28 ultimo nao incluso
 day_i, day_f = 1, 5 # 1-5 ultimo incluso
 
 # where local hide is:
-local_hide = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/hide-beam/"
+local_hide = "/scratch/bingo/joao.barretos/hide_and_seek/hide-beam/"
 # where auto_run_hide.py is
 ARH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/auto_run_hide.py"
 # where sbatch is
@@ -78,22 +78,26 @@ for n_sbatch in range(n_sbatches):
 	new_sbatch_lines = sbatch_lines.copy()
 	if n_sbatch==n_sbatches-1:
 		n_perbatch = len(bingo_files)%n_perbatch
+		
 	
 	with open(new_sbatch,"w") as new_sbatchf:
 		for n_srun in range(n_perbatch):
 		
-			err_out_file = new_sbatch.split(".")[0]
+			err_out_file = os.path.splitext(new_sbatch)[0]
 			new_sbatch_lines[sbatch_o_line] = sbatch_o_landmark + err_out_file + ".out\n"
 			new_sbatch_lines[sbatch_e_line] = sbatch_e_landmark + err_out_file + ".err\n"
 			
 			bingo_i = n_sbatch*n_perbatch+n_srun
 			bingof = bingo_files[bingo_i]
 			n_srun_cmd = srun_cmd.format(bingo=bingof)		
-			new_sbatch_lines.insert(start_from+n_srun+1, n_srun_cmd)
+			if n_srun<(n_perbatch-1):
+				new_sbatch_lines.insert(start_from+n_srun+1, n_srun_cmd)
+			else: # last line doesnt have & at the end
+				new_sbatch_lines.insert(start_from+n_srun+1, n_srun_cmd[:-2]+"\n")
 	
 		new_sbatchf.writelines(new_sbatch_lines)
 			
 	# enviar diversos sbatches de uma vez para fila cpu_shared
-	#os.system(sbatch_cmd.format(new_sbatch))
+	#os.system(sbatch_cmd.format(new_sbatch))#; break #fazendo loop unico para testar
 
 
