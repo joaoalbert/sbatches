@@ -1,41 +1,48 @@
 import os
+import time
 
 horn_i, horn_f = 0, 28 # 0-28 ultimo nao incluso
 day_i, day_f = 1, 5 # 1-5 ultimo incluso
 
 # where local hide is:
-local_hide = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/hide/"
+local_hide = "/scratch/bingo/joao.barretos/hide_and_seek/hide-beam/"
 # where auto_run_hide.py is
-ARH_FILE = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/HS_scripts/auto_run_hide.py"
+ARH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/HS_scripts/auto_run_hide.py"
 # where sbatch is
-SBATCH_FILE = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/sbatch_auto_jobs.srm"
+SBATCH_FILE = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sbatch_auto_jobs.srm"
 
-new_sbatches = "/home/joao/Documentos/cosmologia/sdumont/multi_requeue/sbatch_auto_jobs_{}.srm"
+new_sbatches = "/scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/sbatch_auto_jobs_{}.srm"
 
-partition = "sequana_cpu_shared"
-n_perbatch = 10 # tasks
+partition = "sequana_cpu_dev" # check if partition info is in dict
+n_perbatch = 1 # tasks
 N_perbatch = 1 # nodes
-m_pertask = 4 #64*N_perbatch/n_perbatch # memory in GB
+m_pertask = 2 #64*N_perbatch/n_perbatch # memory in GB
+n_tpn = n_perbatch//N_perbatch # tasks per node
 sd_user = "joao.barretos"
+jobs_name = "auto_hide_{}"
 
-run_sbatches = False
+run_sbatches = True
 sleep_time = 30 # time (s) to wait and re-check if there is space in queue
 
 srun_cmd = "srun hide hide.config.{bingo} &\n" # command line to run hide
 sbatch_cmd = "sbatch {}"
-squeue_wait = "squeue -u {} -p {} -t PD".format(sd_user, partition)
+squeue_wait = "squeue -u {} -p {}".format(sd_user, partition)
+
 
 # [limite memoria RAM, limite jobs em espera]
 partitions = {"sequana_cpu_shared": [64, 24],
 			  "cpu_shared": [64, 96],
 			  "cpu_dev": [64, 1],
+			  "sequana_cpu_dev": [64, 1],
 			  }
 			  
 memlim, jobslim = partitions[partition][0], partitions[partition][1]
 
 sbatch_landmarks = {"p": "#SBATCH -p ",
+					"j": "#SBATCH --job-name=",
 					"N": "#SBATCH -N",
 					"n": "#SBATCH -n",
+					"tpn": "#SBATCH --ntasks-per-node=",
 					"m": "#SBATCH --mem-per-cpu=",
 					"o": "#SBATCH -o ",
 					"e": "#SBATCH -e",
@@ -105,8 +112,10 @@ for n_sbatch in range(n_sbatches):
 		
 			err_out_file = os.path.splitext(new_sbatch)[0]
 			new_sbatch_lines[landmark_lines["p"]] = sbatch_landmarks["p"] + partition + "\n"
+			new_sbatch_lines[landmark_lines["j"]] = sbatch_landmarks["j"] + jobs_name.format(n_sbatch) + "\n"
 			new_sbatch_lines[landmark_lines["N"]] = sbatch_landmarks["N"] + str(N_perbatch) + "\n"
 			new_sbatch_lines[landmark_lines["n"]] = sbatch_landmarks["n"] + str(n_perbatch) + "\n"
+			new_sbatch_lines[landmark_lines["tpn"]] = sbatch_landmarks["tpn"] + str(n_tpn) + "\n"
 			new_sbatch_lines[landmark_lines["m"]] = sbatch_landmarks["m"] + str(m_pertask) + "G\n"
 			new_sbatch_lines[landmark_lines["o"]] = sbatch_landmarks["o"] + err_out_file + ".out\n"
 			new_sbatch_lines[landmark_lines["e"]] = sbatch_landmarks["e"] + err_out_file + ".err\n"
@@ -114,29 +123,33 @@ for n_sbatch in range(n_sbatches):
 			bingo_i = n_sbatch*n_perbatch+n_srun
 			bingof = bingo_files[bingo_i]
 			n_srun_cmd = srun_cmd.format(bingo=bingof)		
-			if n_srun<(n_perbatch):#-1):
+			if n_srun<(n_perbatch-1):
 				new_sbatch_lines.insert(landmark_lines["cmd"]+n_srun+1, n_srun_cmd)
-			#else: # last line doesnt have & at the end
-			#	new_sbatch_lines.insert(landmark_lines["cmd"]+n_srun+1, n_srun_cmd[:-2]+"\n")
+			else: # last line doesnt have & at the end
+				new_sbatch_lines.insert(landmark_lines["cmd"]+n_srun+1, n_srun_cmd[:-2]+"\n")
 			
 		new_sbatchf.writelines(new_sbatch_lines)
 	sbatch_files.append(new_sbatch)
 
 
 def sleep_while_full(squeue_wait, jobslim, sleep_time=30):
+	print("Checking space in queue...")
 	waiting_jobs = os.popen(squeue_wait).read()
 	num_waiting_jobs = len(waiting_jobs.split("\n"))-2
-	while num_waiting_jobs>jobslim:
-		os.sleep(sleep_time)
+	print("Queue has {} jobs (lim is {}).".format(num_waiting_jobs, jobslim))
+	while num_waiting_jobs>=jobslim:
+		time.sleep(sleep_time)
 		waiting_jobs = os.popen(squeue_wait).read()
-		num_waiting_jobs = len(waiting_jobs.split("\n"))-2
+		num_waiting_jobs = len(waiting_jobs.split("\n"))-2	
+	print("Queue is free now.")
 
 
 # enviar diversos sbatches de uma vez para fila cpu_shared
 if run_sbatches:
 	for new_sbatch in sbatch_files:
 		sleep_while_full(squeue_wait, jobslim, sleep_time)
+		print("Running {}...".format(new_sbatch))
 		os.system(sbatch_cmd.format(new_sbatch))#; break #fazendo loop unico para testar
-
+		time.sleep(sleep_time)
 
 

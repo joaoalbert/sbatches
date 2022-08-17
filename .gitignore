@@ -1,3 +1,5 @@
+*.err
+*.out
 sbatch_auto_jobs_*
 
 # Byte-compiled / optimized / DLL files

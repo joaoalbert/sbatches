@@ -1,0 +1,28 @@
+#!/bin/bash -f
+
+#SBATCH --job-name=simple_test
+#SBATCH -p cpu_dev
+#SBATCH -N1
+#SBATCH -n1
+#SBATCH --ntasks-per-node=1
+#SBATCH --mem-per-cpu=100K
+#SBATCH --time=00:01:00
+#SBATCH -o /scratch/bingo/joao.barretos/hide_and_seek/sbatches/simple_test/simple_test.out
+#SBATCH -e /scratch/bingo/joao.barretos/hide_and_seek/sbatches/simple_test/simple_test.err
+
+source /scratch/bingo/joao.barretos/hide_and_seek/hide_beam_env/bin/activate
+
+echo Time is `date`
+echo Running on host `hostname`
+echo Directory is `pwd`
+echo Files are `ls`
+echo This jobs runs on the following processors:
+echo $SLURM_JOB_NODELIST
+echo
+
+# Jobs go below
+sleep(7)
+
+echo
+echo Time is `date`
+
