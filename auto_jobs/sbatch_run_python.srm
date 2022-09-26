@@ -11,7 +11,7 @@
 #SBATCH -e /scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/run_python.err
 
 source /scratch/bingo/joao.barretos/hide_and_seek/hide_beam_env/bin/activate
-cd /scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_run/
+cd /scratch/bingo/joao.barretos/hide_and_seek/sbatches/auto_jobs/
 
 echo Time is `date`
 echo Running on host `hostname`

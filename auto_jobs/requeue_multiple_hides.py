@@ -22,7 +22,7 @@ sd_user = "joao.barretos"
 jobs_name = "auto_hide_{}"
 
 run_sbatches = True
-sleep_time = 30 # time (s) to wait and re-check if there is space in queue
+sleep_time = 15 # time (s) to wait and re-check if there is space in queue
 
 srun_cmd = "srun hide hide.config.{bingo} &\n" # command line to run hide
 sbatch_cmd = "sbatch {}"
